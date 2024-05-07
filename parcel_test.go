@@ -259,5 +259,5 @@ func TestGetCountByClientID(t *testing.T) {
 	// убедитесь в отсутствии ошибки
 	// убедитесь, что количество полученных посылок совпадает с количеством добавленных
 	require.NoError(t, err)
-	require.Equal(t, len(parcels), count)
+	require.Equal(t, len(parcels), int(count))
 }
