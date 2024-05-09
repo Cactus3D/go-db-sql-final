@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -13,6 +15,8 @@ const (
 	ParcelStatusSent       = "sent"
 	ParcelStatusDelivered  = "delivered"
 )
+
+const ExecTimeout = 5 * time.Second
 
 type Parcel struct {
 	Number    int
@@ -31,6 +35,9 @@ func NewParcelService(store ParcelStore) ParcelService {
 }
 
 func (s ParcelService) Register(client int, address string) (Parcel, error) {
+	ctx, cancelfunc := context.WithTimeout(context.Background(), ExecTimeout)
+	defer cancelfunc()
+
 	parcel := Parcel{
 		Client:    client,
 		Status:    ParcelStatusRegistered,
@@ -38,7 +45,7 @@ func (s ParcelService) Register(client int, address string) (Parcel, error) {
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 
-	id, err := s.store.Add(parcel)
+	id, err := s.store.Add(ctx, parcel)
 	if err != nil {
 		return parcel, err
 	}
@@ -52,7 +59,10 @@ func (s ParcelService) Register(client int, address string) (Parcel, error) {
 }
 
 func (s ParcelService) PrintClientParcels(client int) error {
-	parcels, err := s.store.GetByClient(client)
+	ctx, cancelfunc := context.WithTimeout(context.Background(), ExecTimeout)
+	defer cancelfunc()
+
+	parcels, err := s.store.GetByClient(ctx, client)
 	if err != nil {
 		return err
 	}
@@ -68,7 +78,10 @@ func (s ParcelService) PrintClientParcels(client int) error {
 }
 
 func (s ParcelService) NextStatus(number int) error {
-	parcel, err := s.store.Get(number)
+	ctx, cancelfunc := context.WithTimeout(context.Background(), ExecTimeout)
+	defer cancelfunc()
+
+	parcel, err := s.store.Get(ctx, number)
 	if err != nil {
 		return err
 	}
@@ -85,15 +98,21 @@ func (s ParcelService) NextStatus(number int) error {
 
 	fmt.Printf("У посылки № %d новый статус: %s\n", number, nextStatus)
 
-	return s.store.SetStatus(number, nextStatus)
+	return s.store.SetStatus(ctx, number, nextStatus)
 }
 
 func (s ParcelService) ChangeAddress(number int, address string) error {
-	return s.store.SetAddress(number, address)
+	ctx, cancelfunc := context.WithTimeout(context.Background(), ExecTimeout)
+	defer cancelfunc()
+
+	return s.store.SetAddress(ctx, number, address)
 }
 
 func (s ParcelService) Delete(number int) error {
-	return s.store.Delete(number)
+	ctx, cancelfunc := context.WithTimeout(context.Background(), ExecTimeout)
+	defer cancelfunc()
+
+	return s.store.Delete(ctx, number)
 }
 
 func main() {
@@ -141,7 +160,7 @@ func main() {
 
 	// попытка удаления отправленной посылки
 	err = service.Delete(p.Number)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrNoRowsDeleted) {
 		fmt.Println(err)
 		return
 	}
