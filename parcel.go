@@ -75,6 +75,9 @@ func (s ParcelStore) GetByClient(ctx context.Context, client int) ([]Parcel, err
 		}
 		res = append(res, p)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return res, nil
 }

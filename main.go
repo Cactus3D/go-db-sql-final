@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -159,11 +158,7 @@ func main() {
 	}
 
 	// попытка удаления отправленной посылки
-	err = service.Delete(p.Number)
-	if err != nil && !errors.Is(err, ErrNoRowsDeleted) {
-		fmt.Println(err)
-		return
-	}
+	service.Delete(p.Number)
 
 	// вывод посылок клиента
 	// предыдущая посылка не должна удалиться, т.к. её статус НЕ «зарегистрирована»
